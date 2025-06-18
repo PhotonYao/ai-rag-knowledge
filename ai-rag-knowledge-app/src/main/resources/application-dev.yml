@@ -7,6 +7,9 @@ app:
     cross-origin: "*"
 
 spring:
+  mvc:
+    async:
+      request-timeout: 60000 # 设置超时时间为60秒(单位毫秒)
   datasource:
     driver-class-name: org.postgresql.Driver
     username: postgres
@@ -28,7 +31,7 @@ spring:
           temperature: 0.7
       embedding:
         options:
-          model: nomic-embed-text
+          model: bge-m3:latest
           num-batch: 512
 
 jwt:
