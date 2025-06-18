@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 对话助手</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .message-container {
+            scroll-behavior: smooth;
+        }
+        /* 自定义滚动条样式 */
+        .message-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        .message-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .message-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        .message-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        .typing-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #6b7280;
+            margin-right: 4px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        .typing-indicator:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col">
+<div class="container mx-auto max-w-3xl px-4 py-6 flex-1 flex flex-col">
+    <header class="mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">AI 对话助手</h1>
+        <div class="flex items-center mt-2">
+            <select id="modelSelect" class="bg-white border border-gray-300 rounded-md px-3 py-1 text-sm">
+                <option value="qwen3:1.7b">qwen3:1.7b</option>
+                <option value="llama3">llama3</option>
+                <option value="gemma">gemma</option>
+            </select>
+            <span class="ml-2 text-sm text-gray-600">选择模型</span>
+        </div>
+    </header>
+
+    <div class="flex-1 bg-white rounded-lg shadow-md overflow-hidden flex flex-col">
+        <!-- 消息显示区域 -->
+        <div id="messageContainer" class="message-container flex-1 p-4 overflow-y-auto max-h-[60vh]">
+            <div class="flex flex-col space-y-4">
+                <!-- 消息会在这里动态添加 -->
+            </div>
+        </div>
+
+        <!-- 输入区域 -->
+        <div class="border-t border-gray-200 p-4 bg-gray-50">
+            <div class="flex space-x-2">
+                <input
+                        id="messageInput"
+                        type="text"
+                        placeholder="输入消息..."
+                        class="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        autocomplete="off"
+                >
+                <button
+                        id="sendButton"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    发送
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">按 Enter 键发送消息</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const messageContainer = document.getElementById('messageContainer');
+        const modelSelect = document.getElementById('modelSelect');
+
+        let currentEventSource = null;
+        let isWaitingForResponse = false;
+        let aiMessageId = '';
+        let aiMessageElement = null;
+
+        // 发送消息函数
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || isWaitingForResponse) return;
+
+            // 添加用户消息到界面
+            addMessage('user', message);
+            messageInput.value = '';
+
+            // 准备AI消息容器
+            aiMessageId = 'ai-' + Date.now();
+            addMessage('assistant', '', aiMessageId);
+            aiMessageElement = document.getElementById(aiMessageId);
+
+            // 添加打字指示器
+            addTypingIndicator();
+
+            // 滚动到底部
+            scrollToBottom();
+
+            // 获取模型
+            const model = modelSelect.value;
+
+            // 构建API URL
+            const apiUrl = `http://localhost:8089/api/v1/ollama/generate_stream?model=${encodeURIComponent(model)}&message=${encodeURIComponent(message)}`;
+
+            // 创建EventSource连接
+            currentEventSource = new EventSource(apiUrl);
+            isWaitingForResponse = true;
+            sendButton.disabled = true;
+
+            currentEventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+
+                    // 移除打字指示器
+                    removeTypingIndicator();
+
+                    // 处理响应数据
+                    if (Array.isArray(data)) {
+                        for (const item of data) {
+                            if (item.result?.output?.text !== undefined) {
+                                const content = item.result.output.text;
+                                if (content) {
+                                    aiMessageElement.textContent += content;
+                                }
+                            }
+
+                            // 检查是否结束
+                            if (item.result?.metadata?.finishReason === 'stop') {
+                                closeConnection();
+                                break;
+                            }
+                        }
+                    } else if (data.result?.output?.text !== undefined) {
+                        const content = data.result.output.text;
+                        if (content) {
+                            aiMessageElement.textContent += content;
+                        }
+
+                        // 检查是否结束
+                        if (data.result?.metadata?.finishReason === 'stop') {
+                            closeConnection();
+                        }
+                    }
+
+                    scrollToBottom();
+                } catch (error) {
+                    console.error('解析响应数据出错:', error);
+                    removeTypingIndicator();
+                    if (!aiMessageElement.textContent.trim()) {
+                        aiMessageElement.textContent = '抱歉，发生错误，请重试。';
+                    }
+                    closeConnection();
+                }
+            };
+
+            currentEventSource.onerror = function() {
+                console.error('EventSource连接出错');
+                removeTypingIndicator();
+                if (!aiMessageElement.textContent.trim()) {
+                    aiMessageElement.textContent = '抱歉，发生错误，请重试。';
+                }
+                closeConnection();
+            };
+        }
+
+        // 添加打字指示器
+        function addTypingIndicator() {
+            if (!aiMessageElement) return;
+
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator-container flex items-center';
+            indicator.innerHTML = `
+                    <span class="typing-indicator"></span>
+                    <span class="typing-indicator"></span>
+                    <span class="typing-indicator"></span>
+                `;
+            aiMessageElement.appendChild(indicator);
+        }
+
+        // 移除打字指示器
+        function removeTypingIndicator() {
+            if (!aiMessageElement) return;
+
+            const indicator = aiMessageElement.querySelector('.typing-indicator-container');
+            if (indicator) {
+                aiMessageElement.removeChild(indicator);
+            }
+        }
+
+        // 关闭连接函数
+        function closeConnection() {
+            if (currentEventSource) {
+                currentEventSource.close();
+                currentEventSource = null;
+            }
+            isWaitingForResponse = false;
+            sendButton.disabled = false;
+            messageInput.focus();
+        }
+
+        // 添加消息到界面
+        function addMessage(role, content, id = '') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = `max-w-[80%] rounded-lg px-4 py-2 ${
+                role === 'user'
+                    ? 'bg-blue-600 text-white rounded-br-none'
+                    : 'bg-gray-200 text-gray-800 rounded-bl-none'
+            }`;
+
+            if (id) {
+                contentDiv.id = id;
+            }
+
+            contentDiv.textContent = content;
+            messageDiv.appendChild(contentDiv);
+
+            messageContainer.querySelector('.space-y-4').appendChild(messageDiv);
+        }
+
+        // 滚动到底部
+        function scrollToBottom() {
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        // 事件监听
+        sendButton.addEventListener('click', sendMessage);
+
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 初始焦点
+        messageInput.focus();
+    });
+</script>
+</body>
+</html>

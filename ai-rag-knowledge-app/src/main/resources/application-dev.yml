@@ -1,0 +1,66 @@
+server:
+  port: 8089
+
+app:
+  config:
+    api-version: v1
+    cross-origin: "*"
+
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgres
+    url: jdbc:postgresql://192.168.119.129:5432/ai-rag-knowledge
+    type: com.zaxxer.hikari.HikariDataSource
+  ai:
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
+        max-document-batch-size: 10000
+    ollama:
+      base-url: http://192.168.119.129:11434
+      chat:
+        options:
+          model: qwen3:1.7b
+          temperature: 0.7
+      embedding:
+        options:
+          model: nomic-embed-text
+          num-batch: 512
+
+jwt:
+  secret: your-secret
+  expiration: 259200
+
+thread:
+  pool:
+    executor:
+      config:
+        core-pool-size: 20
+        max-pool-size: 50
+        keep-alive-time: 5000
+        block-queue-size: 5000
+        policy: CallerRunsPolicy
+
+redis:
+  sdk:
+    config:
+      host: 192.168.119.129
+      port: 16379
+      password: 123456
+      pool-size: 10
+      min-idle-size: 5
+      idle-timeout: 30000
+      connect-timeout: 5000
+      retry-attempts: 3
+      retry-interval: 1000
+      ping-interval: 60000
+      keep-alive: true
+
+logging:
+  level:
+    root: info
+  config: classpath:logback-spring.xml
