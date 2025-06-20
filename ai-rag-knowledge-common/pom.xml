@@ -9,7 +9,7 @@
         <version>1.0</version>
     </parent>
 
-    <artifactId>ai-rag-knowledge-api</artifactId>
+    <artifactId>ai-rag-knowledge-common</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -18,21 +18,10 @@
     </properties>
 
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-ollama-spring-boot-starter -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-ollama-spring-boot-starter</artifactId>
-        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>top.kangyaocoding.ai</groupId>
-            <artifactId>ai-rag-knowledge-common</artifactId>
-            <version>1.0</version>
         </dependency>
     </dependencies>
 

@@ -12,6 +12,7 @@
         <module>ai-rag-knowledge-api</module>
         <module>ai-rag-knowledge-app</module>
         <module>ai-rag-knowledge-trigger</module>
+        <module>ai-rag-knowledge-common</module>
     </modules>
 
     <properties>

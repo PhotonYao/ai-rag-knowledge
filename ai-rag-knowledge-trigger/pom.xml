@@ -62,6 +62,12 @@
         <dependency>
             <groupId>top.kangyaocoding.ai</groupId>
             <artifactId>ai-rag-knowledge-api</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>top.kangyaocoding.ai</groupId>
+            <artifactId>ai-rag-knowledge-common</artifactId>
+            <version>1.0</version>
         </dependency>
     </dependencies>
 
