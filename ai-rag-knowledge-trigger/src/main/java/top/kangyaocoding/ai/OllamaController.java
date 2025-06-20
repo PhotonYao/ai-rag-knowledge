@@ -60,7 +60,7 @@ public class OllamaController {
         ));
     }
 
-    @RequestMapping(value = "generate_stream_rag", method = RequestMethod.POST)
+    @RequestMapping(value = "generate_stream_rag", method = RequestMethod.GET)
     public Flux<ChatResponse> generateStreamRag(@RequestParam String model, @RequestParam String ragTag, @RequestParam String message) {
         String SYSTEM_PROMPT = """
                 基于以下给出的 DOCUMENTS 信息，遵守规范约束，专业、简要回答用户的问题。
