@@ -47,9 +47,6 @@ public class RAGTest {
         List<Document> documents = tikaDocumentReader.get();
         List<Document> documentsSplitterList = tokenTextSplitter.apply(documents);
 
-        documents.forEach(document -> {
-            document.getMetadata().put("knowledge", "知识库名称");
-        });
         documentsSplitterList.forEach(document -> {
             document.getMetadata().put("knowledge", "知识库名称");
         });
