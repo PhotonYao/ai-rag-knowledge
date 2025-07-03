@@ -41,53 +41,84 @@ public class RAGTest {
     @Resource
     private PgVectorStore pgVectorStore;
 
+    /**
+     * 测试文件上传功能
+     * <p>
+     * 1. 读取测试文件内容
+     * 2. 对文档内容进行分割处理
+     * 3. 为文档添加元数据
+     * 4. 将处理后的文档存储到向量数据库
+     */
     @Test
     public void upload() {
+        // 使用Tika文档阅读器读取测试文件
         TikaDocumentReader tikaDocumentReader = new TikaDocumentReader("static/test.txt");
         List<Document> documents = tikaDocumentReader.get();
+
+        // 对文档内容进行分割处理
         List<Document> documentsSplitterList = tokenTextSplitter.apply(documents);
 
+        // 为每个分割后的文档添加知识库名称元数据
         documentsSplitterList.forEach(document -> {
-            document.getMetadata().put("knowledge", "知识库名称");
+            document.getMetadata().put("knowledge", "王大瓜知识库");
         });
 
+        // 将处理后的文档存入向量数据库
         pgVectorStore.accept(documentsSplitterList);
 
         log.info("上传成功");
     }
 
+
+    /**
+     * 测试聊天功能，使用RAG(检索增强生成)模型回答问题。
+     * 1. 根据用户问题检索相关文档
+     * 2. 将检索结果和系统提示组合成消息
+     * 3. 调用Ollama聊天模型生成回答
+     */
     @Test
     public void chat() {
-        String message = "王大瓜，哪年出生";
+        // 测试用问题
+        String message = "王大瓜的个人信息有哪些？";
 
+        // 系统提示模板，要求模型基于检索文档回答但表现得像已知信息
         String SYSTEM_PROMPT = """
-                使用 DOCUMENTS 部分的信息提供准确的答案，但要表现得好像您天生就知道这些信息一样。
-                                如果不确定，只需说明您不知道。
-                                您需要注意的另一件事是您的回复必须是中文！
-                                DOCUMENTS:
+                请严格依据提供的 DOCUMENTS 内容进行回答，确保答案与文档信息完全一致。
+                                如果在文档中未找到相关信息，请直接回复“未找到相关信息”。
+                                回答必须使用中文，并保持自然流畅的口语化表达。
+                                文档内容如下：
                                     {documents}
                 """;
+
+        // 构建搜索请求，查询知识库中相关文档
         SearchRequest request = SearchRequest.builder()
                 .query(message)
                 .topK(5)
-                .filterExpression("knowledge == '知识库名称'")
+                .filterExpression("knowledge == '王大瓜知识库'")
                 .build();
+
+        // 执行相似度搜索获取相关文档
         List<Document> documents = pgVectorStore.similaritySearch(request);
         if (documents == null) {
             log.info("没有找到匹配的文档");
             return;
         }
+
+        // 将检索到的文档内容合并为一个字符串
         String documentsCollectors = documents.stream()
                 .map(Document::getText)
                 .collect(java.util.stream.Collectors.joining());
 
+        // 创建系统提示消息，插入检索到的文档内容
         Message ragMessage = new SystemPromptTemplate(SYSTEM_PROMPT)
                 .createMessage(Map.of("documents", documentsCollectors));
 
+        // 构建消息列表：用户问题+系统提示
         ArrayList<Message> messages = new ArrayList<>();
         messages.add(new UserMessage(message));
         messages.add(ragMessage);
 
+        // 调用Ollama聊天模型生成回答
         ChatResponse chatResponse = ollamaChatModel.call(
                 new Prompt(messages,
                         OllamaOptions.builder()
@@ -95,4 +126,5 @@ public class RAGTest {
                                 .build()));
         log.info("测试结果：{}", JSON.toJSONString(chatResponse));
     }
+
 }
