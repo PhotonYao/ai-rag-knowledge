@@ -34,12 +34,13 @@ import java.util.stream.Collectors;
 @RestController()
 @CrossOrigin(origins = "${app.config.cross-origin}")
 @RequestMapping("/api/${app.config.api-version}/ollama/")
-public class OllamaController {
+public class OllamaController implements IAiService {
     @Resource
     private OllamaChatModel ollamaChatModel;
     @Resource
     private PgVectorStore pgVectorStore;
 
+    @Override
     @RequestMapping(value = "generate", method = RequestMethod.GET)
     public ChatResponse generate(@RequestParam String model, @RequestParam String message) {
         return ollamaChatModel.call(new Prompt(
@@ -50,6 +51,7 @@ public class OllamaController {
         ));
     }
 
+    @Override
     @RequestMapping(value = "generate_stream", method = RequestMethod.GET)
     public Flux<ChatResponse> generateStream(@RequestParam String model, @RequestParam String message) {
         return ollamaChatModel.stream(new Prompt(
@@ -60,6 +62,7 @@ public class OllamaController {
         ));
     }
 
+    @Override
     @RequestMapping(value = "generate_stream_rag", method = RequestMethod.GET)
     public Flux<ChatResponse> generateStreamRag(@RequestParam String model, @RequestParam String ragTag, @RequestParam String message) {
         String SYSTEM_PROMPT = """

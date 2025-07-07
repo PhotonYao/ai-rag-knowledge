@@ -43,6 +43,12 @@
                 <artifactId>spring-ai-ollama-spring-boot-starter</artifactId>
                 <version>1.0.0-M6</version>
             </dependency>
+            <!-- https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-ollama-spring-boot-starter -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+                <version>1.0.0-M6</version>
+            </dependency>
             <!-- https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-tika-document-reader -->
             <dependency>
                 <groupId>org.springframework.ai</groupId>

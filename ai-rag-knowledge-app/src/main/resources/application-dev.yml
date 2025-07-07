@@ -1,5 +1,5 @@
 server:
-  port: 8089
+  port: 8090
 
 app:
   config:
@@ -33,6 +33,16 @@ spring:
         options:
           model: bge-m3:latest
           num-batch: 512
+    openai:
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/
+      api-key: sk-
+      chat:
+        options:
+          model: qwen3-32b
+          temperature: 0.7
+      embedding:
+        options:
+          model: text-embedding-v4
 
 jwt:
   secret: your-secret
